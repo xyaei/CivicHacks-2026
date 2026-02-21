@@ -90,6 +90,89 @@ app.get("/verify/:record_id", async (req, res) => {
   }
 });
 
+// POST /init-fund — run this once to create the fund
+app.post("/init-fund", async (req, res) => {
+  try {
+    const [fundPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("bail_fund")],
+      programId
+    );
+
+    const tx = await program.methods
+      .initializeFund()
+      .accounts({
+        fund: fundPda,
+        authority: wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    res.json({ success: true, fund_address: fundPda.toString(), transaction: tx });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /fund-status — check fund balance and stats
+app.get("/fund-status", async (req, res) => {
+  try {
+    const [fundPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("bail_fund")],
+      programId
+    );
+
+    const account = await program.account.bailFund.fetch(fundPda);
+    const balance = await connection.getBalance(fundPda);
+
+    res.json({
+      fund_address: fundPda.toString(),
+      balance_sol: balance / anchor.web3.LAMPORTS_PER_SOL,
+      total_contributed: account.totalContributed.toString(),
+      total_disbursed: account.totalDisbursed.toString(),
+      cases_funded: account.caseCount.toString(),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /disburse — send funds for a specific case
+app.post("/disburse", async (req, res) => {
+  try {
+    const { case_id, recipient_address, amount_sol } = req.body;
+
+    const [fundPda] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("bail_fund")],
+      programId
+    );
+
+    const recipient = new anchor.web3.PublicKey(recipient_address);
+    const amount = amount_sol * anchor.web3.LAMPORTS_PER_SOL;
+
+    const tx = await program.methods
+      .disburse(case_id, new anchor.BN(amount))
+      .accounts({
+        fund: fundPda,
+        authority: wallet.publicKey,
+        recipient: recipient,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    res.json({
+      success: true,
+      case_id,
+      amount_sol,
+      recipient: recipient_address,
+      transaction: tx,
+      explorer: `https://explorer.solana.com/tx/${tx}?cluster=devnet`,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 app.listen(3000, () => {
   console.log("BailLens audit server running on port 3000");
 });
