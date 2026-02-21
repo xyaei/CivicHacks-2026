@@ -3,6 +3,7 @@ const anchor = require("@coral-xyz/anchor");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
+const { mintCredentialToken } = require("./mintToken");
 
 const app = express();
 app.use(express.json());
@@ -172,6 +173,24 @@ app.post("/disburse", async (req, res) => {
   }
 });
 
+// POST /mint-credential
+// Body: { recipient_address, credential_type }
+// credential_type options: COMMUNITY_WATCH, RIGHTS_TRAINING, DEFENDER_CERTIFIED, JUDGE_TRANSPARENCY
+app.post("/mint-credential", async (req, res) => {
+  try {
+    const { recipient_address, credential_type } = req.body;
+
+    if (!recipient_address || !credential_type) {
+      return res.status(400).json({ error: "recipient_address and credential_type are required" });
+    }
+
+    const result = await mintCredentialToken(recipient_address, credential_type);
+    res.json(result);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.listen(3000, () => {
   console.log("BailLens audit server running on port 3000");
