@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import analytics
 from app.routes import chat
+from app.routes import tts
 
 app = FastAPI(title="JusticeHack Bail Analytics API")
 
@@ -22,8 +23,9 @@ app.add_middleware(
 # Existing analytics routes
 app.include_router(analytics.router)
 
-# New chat route
+# Chat and TTS
 app.include_router(chat.router)
+app.include_router(tts.router)
 
 @app.get("/")
 def root():

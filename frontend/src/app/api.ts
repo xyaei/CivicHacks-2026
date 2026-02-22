@@ -41,6 +41,38 @@ export async function fetchHeatmap(dateRange: string) {
   return request(`/analytics/heatmap?date_range=${encodeURIComponent(dateRange)}`);
 }
 
+export async function fetchTts(text: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/tts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text: text.slice(0, 5000) }),
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || "TTS failed");
+  }
+  return res.blob();
+}
+
+/** Fetch TTS and play; resolves when playback ends. */
+export function playTts(text: string): Promise<void> {
+  return fetchTts(text).then((blob) => {
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    return new Promise((resolve, reject) => {
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(audio.error);
+      };
+      audio.play();
+    });
+  });
+}
+
 export async function fetchChat(question: string): Promise<{ response: string }> {
   return request("/chat", {
     method: "POST",

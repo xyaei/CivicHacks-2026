@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchJudges, fetchJudgeStats, fetchOutlierBrief } from "../api";
+import { Volume2 } from "lucide-react";
+import { fetchJudges, fetchJudgeStats, fetchOutlierBrief, playTts } from "../api";
 
 type JudgeStats = {
   bailComparison: { category: string; your: number; peers: number; courtAvg: number }[];
@@ -14,6 +15,7 @@ export function JudgesSection() {
   const [stats, setStats] = useState<JudgeStats | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [brief, setBrief] = useState<string | null>(null);
+  const [briefSpeaking, setBriefSpeaking] = useState(false);
 
   useEffect(() => {
     setError(null);
@@ -119,7 +121,24 @@ export function JudgesSection() {
             </div>
             {expandedCategory && (
               <div className="mt-3 rounded-sm border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-                {brief === null ? "Loading…" : brief}
+                <div className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 flex-1">{brief === null ? "Loading…" : brief}</span>
+                  {brief !== null && brief !== "Could not load brief." && brief.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (briefSpeaking) return;
+                        setBriefSpeaking(true);
+                        playTts(brief).finally(() => setBriefSpeaking(false));
+                      }}
+                      disabled={briefSpeaking}
+                      className="shrink-0 rounded-full p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
+                      title="Read aloud"
+                    >
+                      <Volume2 className="size-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
