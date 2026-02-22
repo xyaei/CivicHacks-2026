@@ -124,9 +124,12 @@ export function SolanaAuditFeed() {
         usedFallback = true;
       }
 
+      // Use tx signature when available, otherwise verify hash/signature so Explorer link still shows
+      const displaySignature = transactionSignature || verifyData.signature;
+
       setVerifyResult({
         record_id: verifyData.record_id,
-        signature: transactionSignature,
+        signature: displaySignature,
         timestamp: verifyData.timestamp,
         authority: verifyData.authority,
       });
