@@ -73,6 +73,56 @@ pub mod baillens {
         msg!("Disbursed {} lamports for case {}", amount, case_id);
         Ok(())
     }
+
+    // 1. Log case timeline event for a defendant
+    pub fn log_case_event(ctx: Context<LogCaseEvent>, case_id: String, event_type: String, description: String) -> Result<()> {
+        let entry = &mut ctx.accounts.case_event;
+        entry.case_id = case_id;
+        entry.event_type = event_type;
+        entry.description = description;
+        entry.timestamp = Clock::get()?.unix_timestamp;
+        entry.authority = ctx.accounts.authority.key();
+        msg!("Case event logged: {} | {}", entry.case_id, entry.event_type);
+        Ok(())
+    }
+
+    // 2. Log bail outcome after resolution
+    pub fn log_bail_outcome(ctx: Context<LogBailOutcome>, case_id: String, appeared_in_court: bool, bail_modified: bool, days_detained: u32) -> Result<()> {
+        let outcome = &mut ctx.accounts.bail_outcome;
+        outcome.case_id = case_id;
+        outcome.appeared_in_court = appeared_in_court;
+        outcome.bail_modified = bail_modified;
+        outcome.days_detained = days_detained;
+        outcome.timestamp = Clock::get()?.unix_timestamp;
+        outcome.authority = ctx.accounts.authority.key();
+        msg!("Bail outcome logged for case: {}", outcome.case_id);
+        Ok(())
+    }
+
+    // 3. Log public defender caseload entry
+    pub fn log_defender_caseload(ctx: Context<LogDefenderCaseload>, defender_id: String, case_count: u32, district: String) -> Result<()> {
+        let entry = &mut ctx.accounts.caseload_entry;
+        entry.defender_id = defender_id;
+        entry.case_count = case_count;
+        entry.district = district;
+        entry.timestamp = Clock::get()?.unix_timestamp;
+        entry.authority = ctx.accounts.authority.key();
+        msg!("Defender caseload logged: {} cases in {}", entry.case_count, entry.district);
+        Ok(())
+    }
+
+    // 4. Log community misconduct report submission
+    pub fn log_misconduct_report(ctx: Context<LogMisconductReport>, report_id: String, report_hash: String, district: String) -> Result<()> {
+        let report = &mut ctx.accounts.misconduct_report;
+        report.report_id = report_id;
+        report.report_hash = report_hash;
+        report.district = district;
+        report.timestamp = Clock::get()?.unix_timestamp;
+        report.authority = ctx.accounts.authority.key();
+        msg!("Misconduct report logged: {}", report.report_id);
+        Ok(())
+    }
+
 }
 
 // ── Audit Logger Accounts ──
@@ -151,4 +201,109 @@ pub enum BailError {
     Unauthorized,
     #[msg("Insufficient funds in bail pool")]
     InsufficientFunds,
+}
+
+// ── Case Timeline Accounts ──
+#[derive(Accounts)]
+#[instruction(case_id: String, event_type: String, description: String)]
+pub struct LogCaseEvent<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 64 + 64 + 128 + 8 + 32,
+        seeds = [b"case_event", case_id.as_bytes(), event_type.as_bytes()],
+        bump
+    )]
+    pub case_event: Account<'info, CaseEvent>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct CaseEvent {
+    pub case_id: String,
+    pub event_type: String,
+    pub description: String,
+    pub timestamp: i64,
+    pub authority: Pubkey,
+}
+
+// ── Bail Outcome Accounts ──
+#[derive(Accounts)]
+#[instruction(case_id: String)]
+pub struct LogBailOutcome<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 64 + 1 + 1 + 4 + 8 + 32,
+        seeds = [b"bail_outcome", case_id.as_bytes()],
+        bump
+    )]
+    pub bail_outcome: Account<'info, BailOutcome>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct BailOutcome {
+    pub case_id: String,
+    pub appeared_in_court: bool,
+    pub bail_modified: bool,
+    pub days_detained: u32,
+    pub timestamp: i64,
+    pub authority: Pubkey,
+}
+
+// ── Defender Caseload Accounts ──
+#[derive(Accounts)]
+#[instruction(defender_id: String, case_count: u32, district: String)]
+pub struct LogDefenderCaseload<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 64 + 4 + 64 + 8 + 32,
+        seeds = [b"caseload", defender_id.as_bytes()],
+        bump
+    )]
+    pub caseload_entry: Account<'info, CaseloadEntry>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct CaseloadEntry {
+    pub defender_id: String,
+    pub case_count: u32,
+    pub district: String,
+    pub timestamp: i64,
+    pub authority: Pubkey,
+}
+
+// ── Misconduct Report Accounts ──
+#[derive(Accounts)]
+#[instruction(report_id: String, report_hash: String, district: String)]
+pub struct LogMisconductReport<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 64 + 64 + 64 + 8 + 32,
+        seeds = [b"misconduct", report_id.as_bytes()],
+        bump
+    )]
+    pub misconduct_report: Account<'info, MisconductReport>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[account]
+pub struct MisconductReport {
+    pub report_id: String,
+    pub report_hash: String,
+    pub district: String,
+    pub timestamp: i64,
+    pub authority: Pubkey,
 }
