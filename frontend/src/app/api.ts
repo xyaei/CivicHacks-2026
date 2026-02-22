@@ -125,11 +125,6 @@ export interface VerifyRecordResult {
   authority?: string;
 }
 
-const KNOWN_SIGNATURES: Record<string, string> = {
-  "MA-9084402":
-    "57rkk7Sera3NSE5v5a3GPs6sRaM3aQcE14Szd5hwjzJrVh66xU8jjFKrxLSLHuqMBQxVQ1cEePaPQUwa8rTMJM6h",
-};
-
 export async function fetchRecentRecordIds(limit = RECENT_RECORDS_LIMIT): Promise<string[]> {
   const data = await request(`/analytics/recent-record-ids?limit=${limit}`);
   return Array.isArray(data?.record_ids) ? data.record_ids : [];
@@ -137,14 +132,22 @@ export async function fetchRecentRecordIds(limit = RECENT_RECORDS_LIMIT): Promis
 
 export async function fetchVerifyRecord(recordId: string): Promise<VerifyRecordResult> {
   const data = await request(`/blockchain/verify/${encodeURIComponent(recordId)}`);
-  const raw = data?.signature ?? data?.hash ?? data?.tx_signature ?? data?.tx_hash ?? "";
-  const signature = raw || KNOWN_SIGNATURES[recordId] || "";
+  const signature = data?.signature ?? data?.hash ?? data?.tx_signature ?? data?.tx_hash ?? "";
   return {
     record_id: data?.record_id ?? recordId,
     signature,
     timestamp: data?.timestamp ?? "",
     authority: data?.authority,
   };
+}
+
+export async function fetchTransactionForRecord(recordId: string): Promise<{ transaction: string }> {
+  const response = await fetch(`${API_BASE}/tx/${encodeURIComponent(recordId)}`);
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || "Failed to fetch transaction");
+  }
+  return response.json();
 }
 
 export async function fetchFundStatus(): Promise<FundStatus> {

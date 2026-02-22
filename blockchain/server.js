@@ -124,6 +124,27 @@ app.get("/verify/:record_id", async (req, res) => {
   }
 });
 
+// GET /tx/:record_id — get real Solana transaction ID from MongoDB
+app.get("/tx/:record_id", async (req, res) => {
+  try {
+    const record = await mongoose.connection.db
+      .collection("cases")
+      .findOne({ record_id: req.params.record_id });
+
+    if (!record || !record.solana_tx) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    res.json({
+      record_id: req.params.record_id,
+      transaction: record.solana_tx,
+      explorer: `https://explorer.solana.com/tx/${record.solana_tx}?cluster=devnet`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /init-fund — run this once to create the fund
 app.post("/init-fund", async (req, res) => {
   try {
