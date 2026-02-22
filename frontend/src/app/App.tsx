@@ -10,6 +10,8 @@ import { TimeToRelease } from './components/TimeToRelease';
 import { SolanaAuditFeed } from './components/SolanaAuditFeed';
 import { JudgeLogin } from './components/JudgeLogin';
 import { JudgeDashboard } from './components/JudgeDashboard';
+import Chat from './components/chat/Chat';
+import { OutliersTable } from "./components/outliers/OutliersTable";
 
 export default function App() {
   const [chargeType, setChargeType] = useState('all');
@@ -149,6 +151,19 @@ export default function App() {
             >
               <BailDistribution />
               <TimeToRelease />
+            </motion.div>
+
+            {/* Outliers Table */}
+            <OutliersTable />
+
+            {/* Chat AI Demo */}
+            <motion.div
+              className="mt-6 w-full"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.4, ease: "easeOut" }}
+            >
+              <Chat />
             </motion.div>
           </div>
 
