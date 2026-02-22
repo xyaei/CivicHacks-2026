@@ -9,6 +9,7 @@ from app.services.aggregations import (
     get_distribution_by_category,
     get_judges_list,
     get_judge_stats,
+    get_top_judge,
 )
 from app.services.csv_heatmap import (
     get_heatmap_from_csv,
@@ -17,6 +18,8 @@ from app.services.csv_heatmap import (
     get_distribution_by_category_from_csv,
     get_judges_list_from_csv,
     get_judge_stats_from_csv,
+    get_top_judge_from_csv,
+    get_recent_record_ids,
 )
 from app.services.ai_briefs import generate_outlier_brief
 
@@ -67,15 +70,15 @@ def _judges():
     return get_judges_list_from_csv()
 
 
-def _judge_stats(judge: str):
+def _judge_stats(judge: str, date_range: str = "all"):
     """MongoDB first; fall back to CSV when MongoDB fails or returns no comparison."""
     try:
-        out = get_judge_stats(judge)
-        if out.get("bailComparison"):
+        out = get_judge_stats(judge, date_range)
+        if out.get("bailComparison") or out.get("trendData"):
             return out
     except Exception:
         pass
-    return get_judge_stats_from_csv(judge)
+    return get_judge_stats_from_csv(judge, date_range)
 
 
 @router.get("/bias-summary")
@@ -143,11 +146,35 @@ def judges():
     return _judges()
 
 
+def _top_judge():
+    try:
+        name = get_top_judge()
+        if name:
+            return name
+    except Exception:
+        pass
+    return get_top_judge_from_csv() or ""
+
+
+@router.get("/top-judge")
+def top_judge():
+    return {"name": _top_judge()}
+
+
 @router.get("/judge-stats")
-def judge_stats(judge: str = Query(..., description="Judge full name")):
-    return _judge_stats(judge)
+def judge_stats(
+    judge: str = Query(..., description="Judge full name"),
+    date_range: str = Query("all", description="30d | 90d | 6m | 1y | 2y | all"),
+):
+    return _judge_stats(judge, date_range)
 
 
 @router.get("/heatmap")
 def heatmap(date_range: str = Query("all", description="30d | 90d | 6m | 1y | 2y | all")):
     return get_heatmap_from_csv(date_range)
+
+
+@router.get("/recent-record-ids")
+def recent_record_ids(limit: int = Query(10, ge=1, le=20)):
+    """Last N record IDs (MA-{id}) for blockchain sidebar."""
+    return {"record_ids": get_recent_record_ids(limit)}

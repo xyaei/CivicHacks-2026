@@ -219,6 +219,23 @@ def get_judges_list():
         return []
 
 
+def get_top_judge() -> str:
+    """Judge with the most cases (for demo sign-in). Returns empty string if none."""
+    try:
+        pipeline = [
+            {"$match": {"judge": {"$exists": True, "$nin": [None, ""]}}},
+            {"$group": {"_id": "$judge", "n": {"$sum": 1}}},
+            {"$sort": {"n": -1}},
+            {"$limit": 1},
+        ]
+        r = next(bail_collection.aggregate(pipeline), None)
+        if r and r.get("_id"):
+            return (r["_id"] or "").strip() or ""
+    except Exception:
+        logger.exception("get_top_judge failed")
+    return ""
+
+
 def _norm(s: str) -> str:
     """Normalize for comparison: strip and collapse internal whitespace."""
     if s is None:
@@ -226,19 +243,25 @@ def _norm(s: str) -> str:
     return " ".join(str(s).strip().split())
 
 
-def get_judge_stats(judge: str):
+def get_judge_stats(judge: str, date_range: str = "all"):
     """
     For one judge: median bail by crime (your), court median by crime (court_avg),
-    and peer median (other judges' median for same crime). Returns structure for JudgeDashboard.
+    and trend (your vs court median by month). Optional date_range: 30d, 90d, 6m, 1y, 2y, all.
     """
     if not judge or not str(judge).strip():
         return {"bailComparison": [], "trendData": [], "judge": judge or ""}
     judge = str(judge).strip()
     judge_norm = _norm(judge)
+    days_map = {"30d": 30, "90d": 90, "6m": 180, "1y": 365, "2y": 730, "all": None}
+    days = days_map.get(date_range, None)
+    date_match = _date_range_filter(days)
+    base_match = {"judge": {"$exists": True, "$nin": [None, ""]}, "bond": {"$exists": True}}
+    if date_match:
+        base_match.update(date_match)
     try:
         # Normalize crime field (DB may use crime_committed or crime)
         pipeline = [
-            {"$match": {"judge": {"$exists": True, "$nin": [None, ""]}, "bond": {"$exists": True}}},
+            {"$match": base_match},
             {"$addFields": {"_crime": {"$ifNull": ["$crime_committed", {"$ifNull": ["$crime", ""]}]}}},
             {"$match": {"_crime": {"$nin": [None, ""]}}},
             {"$group": {
@@ -342,20 +365,26 @@ def get_judge_stats(judge: str):
 
         # Use exact judge string as stored in DB for trend (in case of spacing differences)
         judge_db = next((j for (c, j) in crime_judge_median if _norm(j) == judge_norm), judge)
+        trend_match_judge = {"judge": judge_db, "file_date": {"$exists": True}}
+        if date_match:
+            trend_match_judge.update(date_match)
         pipeline_trend = [
-            {"$match": {"judge": judge_db, "file_date": {"$exists": True}}},
+            {"$match": trend_match_judge},
             {"$addFields": {"month": {"$substr": ["$file_date", 0, 7]}}},
             {"$group": {"_id": "$month", "bonds": {"$push": "$bond"}}},
             {"$sort": {"_id": 1}},
-            {"$limit": 12},
+            {"$limit": 24},
         ]
         your_trend = {}
         for r in bail_collection.aggregate(pipeline_trend):
             nums = _numeric_bonds(r.get("bonds") or [])
             your_trend[r["_id"]] = round(statistics.median(nums), 2) if nums else 0
 
+        court_trend_match = {"file_date": {"$exists": True}}
+        if date_match:
+            court_trend_match.update(date_match)
         pipeline_court = [
-            {"$match": {"file_date": {"$exists": True}}},
+            {"$match": court_trend_match},
             {"$addFields": {"month": {"$substr": ["$file_date", 0, 7]}}},
             {"$group": {"_id": "$month", "bonds": {"$push": "$bond"}}},
             {"$sort": {"_id": 1}},
@@ -365,7 +394,7 @@ def get_judge_stats(judge: str):
             nums = _numeric_bonds(r.get("bonds") or [])
             court_trend[r["_id"]] = round(statistics.median(nums), 2) if nums else 0
 
-        months = sorted(set(your_trend) | set(court_trend))[-12:]
+        months = sorted(set(your_trend) | set(court_trend))[-24:]
         trend_data = [
             {
                 "label": m[5:7] if len(m) >= 7 else m,

@@ -1,108 +1,241 @@
-import { Shield, Clock } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { Shield, Clock, ExternalLink, Wallet, CheckCircle } from "lucide-react";
+import {
+  fetchRecentRecordIds,
+  fetchVerifyRecord,
+  fetchFundStatus,
+  RECENT_RECORDS_LIMIT,
+  type FundStatus,
+  type VerifyRecordResult,
+} from "../api";
 
-interface AuditEntry {
-  id: string;
-  timestamp: string;
-  hash: string;
-  type: string;
+const EXPLORER_BASE = "https://explorer.solana.com/tx";
+
+function explorerUrl(signature: string): string {
+  return `${EXPLORER_BASE}/${signature}`;
 }
 
-const auditEntries: AuditEntry[] = [
-  {
-    id: '1',
-    timestamp: '2 min ago',
-    hash: '7x9K4mP...nQ2vL8',
-    type: 'Bail Decision',
-  },
-  {
-    id: '2',
-    timestamp: '8 min ago',
-    hash: '3pL6wN...jR4tY9',
-    type: 'Release Record',
-  },
-  {
-    id: '3',
-    timestamp: '15 min ago',
-    hash: 'kT8mF2...xW9pQ1',
-    type: 'Bail Decision',
-  },
-  {
-    id: '4',
-    timestamp: '23 min ago',
-    hash: '9nQ5vL...pK7mR3',
-    type: 'Court Update',
-  },
-  {
-    id: '5',
-    timestamp: '31 min ago',
-    hash: '2wR8pJ...tN6qL4',
-    type: 'Bail Decision',
-  },
-  {
-    id: '6',
-    timestamp: '42 min ago',
-    hash: '5mT3nK...vP9wR2',
-    type: 'Release Record',
-  },
-  {
-    id: '7',
-    timestamp: '1 hr ago',
-    hash: '8pL4wQ...jN7mT5',
-    type: 'Bail Decision',
-  },
-  {
-    id: '8',
-    timestamp: '1 hr ago',
-    hash: 'nK6vR9...pL3wT8',
-    type: 'Court Update',
-  },
-  {
-    id: '9',
-    timestamp: '1 hr ago',
-    hash: 'mP5tK8...wL4nR7',
-    type: 'Bail Decision',
-  },
-];
+/** Sidebar entry: full verify result or placeholder when not on chain */
+type VerifiedEntry = Pick<VerifyRecordResult, "record_id"> & Partial<Pick<VerifyRecordResult, "signature" | "timestamp" | "authority">>;
+
+function FundStatRow({ label, value, muted }: { label: string; value: string | null; muted?: boolean }) {
+  const valueNode = value != null ? <span className={muted ? "text-gray-500" : "font-medium text-gray-900"}>{value}</span> : <span className="font-medium text-gray-900">—</span>;
+  return (
+    <div className="flex justify-between gap-2">
+      <span className={muted ? "text-gray-500" : "text-gray-600"}>{label}</span>
+      {valueNode}
+    </div>
+  );
+}
 
 export function SolanaAuditFeed() {
+  const [verified, setVerified] = useState<VerifiedEntry[]>([]);
+  const [fundStatus, setFundStatus] = useState<FundStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [verifyId, setVerifyId] = useState("");
+  const [verifyResult, setVerifyResult] = useState<VerifiedEntry | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([fetchRecentRecordIds(RECENT_RECORDS_LIMIT), fetchFundStatus()])
+      .then(([ids, fund]) => {
+        if (cancelled) return;
+        setFundStatus(fund);
+        if (!ids.length) {
+          setVerified([]);
+          return;
+        }
+        return Promise.all(
+          ids.map((id) =>
+            fetchVerifyRecord(id).then((r) => ({
+              record_id: r.record_id,
+              signature: r.signature,
+              timestamp: r.timestamp,
+              authority: r.authority,
+            }))
+              .catch(() => ({ record_id: id } as VerifiedEntry))
+          )
+        ).then((results) => {
+          if (cancelled) return;
+          setVerified(results);
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setVerified([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleVerify = () => {
+    const id = verifyId.trim();
+    if (!id) return;
+    setVerifyLoading(true);
+    setVerifyError(null);
+    setVerifyResult(null);
+    fetchVerifyRecord(id)
+      .then((data) => {
+        setVerifyResult(data);
+        setVerifyId("");
+      })
+      .catch((e) => {
+        setVerifyError(e instanceof Error ? e.message : "Verify failed");
+      })
+      .finally(() => setVerifyLoading(false));
+  };
+
   return (
-    <div className="bg-white rounded-sm border border-gray-300 shadow-sm h-full flex flex-col min-w-0">
-      <div className="border-b border-gray-300 px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <Shield className="size-4 text-gray-900" />
-          <h3 className="text-sm font-semibold text-gray-900 tracking-tight">Solana Audit Feed</h3>
+    <div className="w-72 shrink-0 flex flex-col gap-3">
+      {/* Fund status card */}
+      <div className="bg-white rounded-sm border border-gray-300 shadow-sm overflow-hidden">
+        <div className="border-b border-gray-300 px-3 py-2.5 flex items-center gap-2">
+          <Wallet className="size-4 text-gray-900" />
+          <h3 className="text-sm font-semibold text-gray-900 tracking-tight">
+            Fund Status
+          </h3>
         </div>
-        <p className="text-xs text-gray-500 leading-snug mt-1">
-          Blockchain verification of bail decisions
-        </p>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0">
-        <div className="space-y-2">
-          {auditEntries.slice(0, 6).map((entry) => (
-            <div
-              key={entry.id}
-              className="p-2 rounded border border-gray-200 hover:border-gray-300 transition-colors bg-gray-50/50"
-            >
-              <div className="flex items-center justify-between gap-1.5 mb-1">
-                <span className="text-xs font-medium text-gray-700 truncate">{entry.type}</span>
-                <span className="text-xs text-gray-400 shrink-0 flex items-center gap-1">
-                  <Clock className="size-3" />
-                  {entry.timestamp}
-                </span>
-              </div>
-              <code className="text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border border-gray-200 block truncate">
-                {entry.hash}
-              </code>
+        <div className="px-3 py-2.5 text-sm">
+          {fundStatus == null ? (
+            <p className="text-gray-500">Loading…</p>
+          ) : (
+            <div className="space-y-1.5">
+              <FundStatRow label="Balance" value={fundStatus.balance_sol != null ? `${fundStatus.balance_sol} SOL` : null} />
+              <FundStatRow label="Cases funded" value={fundStatus.cases_funded != null ? String(fundStatus.cases_funded) : null} />
+              {fundStatus.total_contributed != null && (
+                <FundStatRow label="Contributed" value={`${fundStatus.total_contributed} SOL`} muted />
+              )}
+              {fundStatus.total_disbursed != null && (
+                <FundStatRow label="Disbursed" value={`${fundStatus.total_disbursed} SOL`} muted />
+              )}
             </div>
-          ))}
+          )}
         </div>
       </div>
-      
-      <div className="border-t border-gray-300 px-3 py-2 bg-gray-50">
-        <div className="flex items-center justify-center gap-1.5">
-          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-          <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Live</p>
+
+      {/* Last 10 verified records */}
+      <div className="bg-white rounded-sm border border-gray-300 shadow-sm h-full flex flex-col min-w-0">
+        <div className="border-b border-gray-300 px-3 py-2.5">
+          <div className="flex items-center gap-2">
+            <Shield className="size-4 text-gray-900" />
+            <h3 className="text-sm font-semibold text-gray-900 tracking-tight">
+              Solana Audit Feed
+            </h3>
+          </div>
+          <p className="text-xs text-gray-500 leading-snug mt-1">
+            Last 10 verified records (Explorer links)
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0" style={{ minHeight: 200 }}>
+          {loading ? (
+            <p className="text-xs text-gray-500 py-2">Loading…</p>
+          ) : verified.length === 0 ? (
+            <p className="text-xs text-gray-500 py-2">No record IDs from data</p>
+          ) : (
+            <div className="space-y-2">
+              {verified.slice(0, RECENT_RECORDS_LIMIT).map((entry) => (
+                <div
+                  key={entry.record_id}
+                  className="p-2 rounded border border-gray-200 hover:border-gray-300 transition-colors bg-gray-50/50"
+                >
+                  <div className="flex items-center justify-between gap-1.5 mb-1">
+                    <span className="text-xs font-medium text-gray-700 truncate">
+                      {entry.record_id}
+                    </span>
+                    {entry.signature ? (
+                      <a
+                        href={explorerUrl(entry.signature)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+                        title="View on Solana Explorer"
+                      >
+                        <ExternalLink className="size-3" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-amber-600 shrink-0">Not on chain</span>
+                    )}
+                  </div>
+                  {entry.timestamp && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                      <Clock className="size-3" />
+                      {entry.timestamp}
+                    </div>
+                  )}
+                  {entry.signature ? (
+                    <code className="text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border border-gray-200 block truncate" title="Signature">
+                      {entry.signature}
+                    </code>
+                  ) : (
+                    <p className="text-xs text-gray-400">Use “Verify on Blockchain” below to check</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Verify on Blockchain */}
+      <div className="bg-white rounded-sm border border-gray-300 shadow-sm overflow-hidden">
+        <div className="border-b border-gray-300 px-3 py-2.5 flex items-center gap-2">
+          <CheckCircle className="size-4 text-gray-900" />
+          <h3 className="text-sm font-semibold text-gray-900 tracking-tight">
+            Verify on Blockchain
+          </h3>
+        </div>
+        <div className="px-3 py-2.5 space-y-2">
+          <input
+            type="text"
+            placeholder="Record ID (e.g. MA-12650277)"
+            value={verifyId}
+            onChange={(e) => setVerifyId(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+            className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+          />
+          <button
+            type="button"
+            onClick={handleVerify}
+            disabled={verifyLoading || !verifyId.trim()}
+            className="w-full py-1.5 text-sm font-medium bg-gray-900 text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {verifyLoading ? "Verifying…" : "Verify"}
+          </button>
+          {verifyError && (
+            <p className="text-xs text-red-600">{verifyError}</p>
+          )}
+          {verifyResult && (
+            <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span className="font-medium text-gray-700">{verifyResult.record_id}</span>
+                {verifyResult.signature && (
+                  <a
+                    href={explorerUrl(verifyResult.signature)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 flex items-center gap-0.5"
+                  >
+                    Explorer <ExternalLink className="size-3" />
+                  </a>
+                )}
+              </div>
+              {verifyResult.timestamp && (
+                <div className="text-gray-500 mb-1">
+                  <Clock className="size-3 inline mr-1" />
+                  {verifyResult.timestamp}
+                </div>
+              )}
+              {verifyResult.signature && (
+                <code className="block truncate text-gray-600 font-mono" title="Signature">{verifyResult.signature}</code>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

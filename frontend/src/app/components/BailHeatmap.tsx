@@ -364,7 +364,7 @@ function GridHeatmapView({
 
   return (
     <>
-      <div className="relative bg-white border border-gray-200 rounded-sm overflow-auto" style={{ maxHeight: '540px' }}>
+      <div className="relative bg-white border border-gray-200 rounded-sm overflow-auto" style={{ maxHeight: '480px' }}>
         <div className="inline-block min-w-full p-4">
           {/* Column headers (charge types) */}
           <div className="flex sticky top-0 bg-white z-10 pb-2" style={{ marginLeft: '140px' }}>

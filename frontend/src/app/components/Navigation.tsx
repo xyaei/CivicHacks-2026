@@ -1,4 +1,4 @@
-import { Scale, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 interface NavigationProps {
   onJudgeLoginClick: () => void;
@@ -11,16 +11,9 @@ export function Navigation({ onJudgeLoginClick, onChatClick }: NavigationProps) 
       <div className="mx-auto max-w-[1440px] px-8 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 bg-gray-900 rounded">
-              <Scale className="size-6 text-white" />
-            </div>
-            <div>
-              <div className="text-xl font-semibold text-gray-900 tracking-tight">
-                Bail Transparency Initiative
-              </div>
-              <div className="text-xs text-gray-600 tracking-wide">
-                Commonwealth of Massachusetts
-              </div>
+            <div className="h-8 w-8 shrink-0 rounded-sm bg-black" />
+            <div className="text-xl font-semibold text-gray-900 tracking-tight">
+              BailLens
             </div>
           </div>
           <div className="flex items-center gap-6">

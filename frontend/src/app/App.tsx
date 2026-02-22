@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Search } from 'lucide-react';
 import { Navigation } from './components/Navigation';
 import { MetricsBar } from './components/MetricsBar';
 import { FilterBar } from './components/FilterBar';
@@ -12,32 +11,42 @@ import { SolanaAuditFeed } from './components/SolanaAuditFeed';
 import { JudgeLogin } from './components/JudgeLogin';
 import { JudgeDashboard } from './components/JudgeDashboard';
 
-const fadeIn = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, ease: "easeOut" as const } };
+const FADE_IN = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, ease: "easeOut" as const } };
 
 function FadeIn({ delay = 0, className, children }: { delay?: number; className?: string; children: React.ReactNode }) {
   return (
-    <motion.div className={className} {...fadeIn} transition={{ ...fadeIn.transition, delay }}>
+    <motion.div className={className} {...FADE_IN} transition={{ ...FADE_IN.transition, delay }}>
       {children}
     </motion.div>
   );
 }
 
 export default function App() {
-  const [dateRange, setDateRange] = useState('all');
-  const [region, setRegion] = useState<'massachusetts' | 'boston'>('massachusetts');
+  const [dateRange, setDateRange] = useState("all");
+  const [region, setRegion] = useState<"massachusetts" | "boston">("massachusetts");
   const [showLogin, setShowLogin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [loggedInJudge, setLoggedInJudge] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
 
-  if (isLoggedIn) {
-    return <JudgeDashboard onLogout={() => { setIsLoggedIn(false); setShowLogin(false); }} />;
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setShowLogin(false);
+    setLoggedInJudge("");
+  };
+  const handleLogin = (name: string) => {
+    setLoggedInJudge(name);
+    setIsLoggedIn(true);
+  };
+
+  if (isLoggedIn && loggedInJudge) {
+    return <JudgeDashboard judgeName={loggedInJudge} onLogout={handleLogout} />;
   }
   if (showLogin) {
-    return <JudgeLogin onBack={() => setShowLogin(false)} onLogin={() => setIsLoggedIn(true)} />;
+    return <JudgeLogin onBack={() => setShowLogin(false)} onLogin={handleLogin} />;
   }
 
-  const regionTab = (r: 'massachusetts' | 'boston') =>
+  const regionTab = (r: "massachusetts" | "boston") =>
     region === r ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50';
 
   return (
@@ -54,27 +63,13 @@ export default function App() {
         <div className="flex gap-6">
           <div className="flex-1">
             <FadeIn delay={0.1} className="mb-6">
-              <div className="flex items-start justify-between gap-6 mb-4">
-                <div className="flex-1">
-                  <h1 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">
-                    Public Bail Data Dashboard
-                  </h1>
-                  <p className="text-gray-600">
-                    Promoting fairness and transparency through open access to judicial data
-                  </p>
-                </div>
-                <div className="w-80">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search counties, charges, or data..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-sm text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent shadow-sm"
-                    />
-                  </div>
-                </div>
+              <div className="mb-4">
+                <h1 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">
+                  Public Bail Data Dashboard
+                </h1>
+                <p className="text-gray-600">
+                  Promoting fairness and transparency through open access to judicial data
+                </p>
               </div>
             </FadeIn>
 
@@ -116,7 +111,7 @@ export default function App() {
             </FadeIn>
           </div>
 
-          <FadeIn delay={0.2} className="w-40 shrink-0">
+          <FadeIn delay={0.2} className="shrink-0">
             <SolanaAuditFeed />
           </FadeIn>
         </div>

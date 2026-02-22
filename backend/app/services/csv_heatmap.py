@@ -134,6 +134,20 @@ def _load_csv():
         return list(csv.DictReader(f))
 
 
+def get_recent_record_ids(limit: int = 10) -> list[str]:
+    """Return last N record IDs from CSV as MA-{id} for blockchain verify."""
+    rows = _load_csv()
+    if not rows:
+        return []
+    tail = rows[-limit:] if len(rows) >= limit else rows
+    out = []
+    for r in tail:
+        raw_id = (r.get("id") or "").strip()
+        if raw_id:
+            out.append(f"MA-{raw_id}")
+    return list(reversed(out))  # oldest of the 10 first, so "last 10" order
+
+
 # Buckets for distribution (match backend aggregations)
 _DIST_BOUNDS = [0, 2000, 5000, 10000, 25000, 50000, 1_000_000]
 _DIST_LABELS = {"0": "$0-2K", "2000": "$2K-5K", "5000": "$5K-10K", "10000": "$10K-25K", "25000": "$25K-50K", "50000": "$50K+"}
@@ -250,17 +264,31 @@ def get_judges_list_from_csv() -> list:
     return sorted(out)
 
 
+def get_top_judge_from_csv() -> str:
+    """Judge with the most cases from CSV. For demo sign-in."""
+    rows = _load_csv()
+    counts = {}
+    for r in rows:
+        j = (r.get("judge") or "").strip()
+        if j:
+            counts[j] = counts.get(j, 0) + 1
+    if not counts:
+        return ""
+    return max(counts, key=counts.get)
+
+
 def _norm_judge(s: str) -> str:
     return " ".join((s or "").strip().split())
 
 
-def get_judge_stats_from_csv(judge: str) -> dict:
-    """Per-judge bail comparison from CSV when MongoDB is unavailable."""
+def get_judge_stats_from_csv(judge: str, date_range: str = "all") -> dict:
+    """Per-judge bail comparison from CSV when MongoDB is unavailable. date_range: 30d, 90d, 6m, 1y, 2y, all."""
     judge = (judge or "").strip()
     if not judge:
         return {"bailComparison": [], "trendData": [], "judge": judge}
     judge_n = _norm_judge(judge)
     rows = _load_csv()
+    rows = _filter_rows_by_date(rows, date_range)
     by_crime_judge = {}
     for r in rows:
         j = (r.get("judge") or "").strip()
@@ -292,7 +320,31 @@ def get_judge_stats_from_csv(judge: str) -> dict:
         court_avg = court_median_by_crime.get(crime, 0)
         label = (crime[:40] + "…") if len(crime) > 40 else crime
         bail_comparison.append({"category": label, "your": your, "peers": court_avg, "courtAvg": court_avg})
-    return {"bailComparison": bail_comparison, "trendData": [], "judge": judge}
+
+    # Monthly trend: judge median vs court median by month
+    by_month_judge = defaultdict(list)
+    by_month_court = defaultdict(list)
+    for r in rows:
+        b = _bond_val(r)
+        if b is None:
+            continue
+        fd = (r.get("file_date") or r.get("date") or "").strip()
+        month = fd[:7] if len(fd) >= 7 else (fd[-4:] + "-" + fd[:2] if fd else "")
+        if not month or len(month) != 7:
+            continue
+        by_month_court[month].append(b)
+        if _norm_judge((r.get("judge") or "").strip()) == judge_n:
+            by_month_judge[month].append(b)
+    months = sorted(set(by_month_judge) | set(by_month_court))[-12:]
+    trend_data = [
+        {
+            "label": m[5:7] if len(m) >= 7 else m,
+            "your": round(statistics.median(by_month_judge[m]), 2) if by_month_judge[m] else 0,
+            "peers": round(statistics.median(by_month_court[m]), 2) if by_month_court[m] else 0,
+        }
+        for m in months
+    ]
+    return {"bailComparison": bail_comparison, "trendData": trend_data, "judge": judge}
 
 
 def get_heatmap_from_csv(date_range: str) -> dict:

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import analytics
+from app.routes import analytics, blockchain
 from app.routes import chat
 from app.routes import tts
 
@@ -22,6 +22,7 @@ app.add_middleware(
 
 # Existing analytics routes
 app.include_router(analytics.router)
+app.include_router(blockchain.router)
 
 # Chat and TTS
 app.include_router(chat.router)

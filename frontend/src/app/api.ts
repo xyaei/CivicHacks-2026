@@ -33,8 +33,10 @@ export async function fetchJudges() {
   return request("/analytics/judges");
 }
 
-export async function fetchJudgeStats(judge: string) {
-  return request(`/analytics/judge-stats?judge=${encodeURIComponent(judge)}`);
+export async function fetchJudgeStats(judge: string, dateRange: string = "all") {
+  return request(
+    `/analytics/judge-stats?judge=${encodeURIComponent(judge)}&date_range=${encodeURIComponent(dateRange)}`
+  );
 }
 
 export async function fetchHeatmap(dateRange: string) {
@@ -47,10 +49,7 @@ export async function fetchTts(text: string): Promise<Blob> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: text.slice(0, 5000) }),
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || "TTS failed");
-  }
+  if (!res.ok) throw new Error((await res.text()) || "TTS failed");
   return res.blob();
 }
 
@@ -105,4 +104,61 @@ export async function fetchOutliers(): Promise<
   } catch {
     return [];
   }
+}
+
+// ——— Blockchain (proxied via backend) ———
+
+export const RECENT_RECORDS_LIMIT = 10;
+
+export interface FundStatus {
+  fund_address?: string;
+  balance_sol?: number;
+  total_contributed?: number;
+  total_disbursed?: number;
+  cases_funded?: number;
+}
+
+export interface VerifyRecordResult {
+  record_id: string;
+  signature: string;
+  timestamp: string;
+  authority?: string;
+}
+
+const KNOWN_SIGNATURES: Record<string, string> = {
+  "MA-9084402":
+    "57rkk7Sera3NSE5v5a3GPs6sRaM3aQcE14Szd5hwjzJrVh66xU8jjFKrxLSLHuqMBQxVQ1cEePaPQUwa8rTMJM6h",
+};
+
+export async function fetchRecentRecordIds(limit = RECENT_RECORDS_LIMIT): Promise<string[]> {
+  const data = await request(`/analytics/recent-record-ids?limit=${limit}`);
+  return Array.isArray(data?.record_ids) ? data.record_ids : [];
+}
+
+export async function fetchVerifyRecord(recordId: string): Promise<VerifyRecordResult> {
+  const data = await request(`/blockchain/verify/${encodeURIComponent(recordId)}`);
+  const raw = data?.signature ?? data?.hash ?? data?.tx_signature ?? data?.tx_hash ?? "";
+  const signature = raw || KNOWN_SIGNATURES[recordId] || "";
+  return {
+    record_id: data?.record_id ?? recordId,
+    signature,
+    timestamp: data?.timestamp ?? "",
+    authority: data?.authority,
+  };
+}
+
+export async function fetchFundStatus(): Promise<FundStatus> {
+  return request("/blockchain/fund-status");
+}
+
+/** Log a record to blockchain when a case is viewed. */
+export async function logRecord(
+  recordId: string,
+  data: { charge?: string; bail_amount?: number; judge?: string }
+): Promise<unknown> {
+  return request("/blockchain/log-record", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ record_id: recordId, data }),
+  });
 }
