@@ -9,6 +9,7 @@ import {
   type FundStatus,
   type VerifyRecordResult,
 } from "../api";
+import { useLanguage } from "../LanguageContext";
 
 const EXPLORER_BASE = "https://explorer.solana.com/tx";
 
@@ -30,6 +31,7 @@ function FundStatRow({ label, value, muted }: { label: string; value: string | n
 }
 
 export function SolanaAuditFeed() {
+  const { t } = useLanguage();
   const [verified, setVerified] = useState<VerifiedEntry[]>([]);
   const [fundStatus, setFundStatus] = useState<FundStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -118,8 +120,10 @@ export function SolanaAuditFeed() {
         const txData = await fetchTransactionForRecord(id);
         transactionSignature = txData.transaction; // This is the REAL Solana transaction signature
         console.log("Got real transaction for", id, ":", transactionSignature);
+      } catch {
+        usedFallback = true;
       }
-      
+
       setVerifyResult({
         record_id: verifyData.record_id,
         signature: transactionSignature,
@@ -174,7 +178,7 @@ export function SolanaAuditFeed() {
           <div className="flex items-center gap-2">
             <Shield className="size-4 text-gray-900" />
             <h3 className="text-sm font-semibold text-gray-900 tracking-tight">
-              Solana Audit Feed
+              {t("solana_auditFeed")}
             </h3>
           </div>
           <p className="text-xs text-gray-500 leading-snug mt-1">
@@ -257,7 +261,7 @@ export function SolanaAuditFeed() {
             disabled={verifyLoading || !verifyId.trim()}
             className="w-full py-1.5 text-sm font-medium bg-gray-900 text-white rounded hover:bg-gray-800 disabled:opacity-50 disabled:pointer-events-none"
           >
-            {verifyLoading ? "Verifying…" : "Verify"}
+            {verifyLoading ? "…" : t("solana_verify")}
           </button>
           {verifyError && (
             <p className="text-xs text-red-600">{verifyError}</p>

@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { motion } from 'motion/react';
-import { Navigation } from './components/Navigation';
-import { MetricsBar } from './components/MetricsBar';
-import { FilterBar } from './components/FilterBar';
-import { BailHeatmap } from './components/BailHeatmap';
-import { BailDistribution } from './components/BailDistribution';
-import { JudgesSection } from './components/JudgesSection';
-import { GeminiChat } from './components/GeminiChat';
-import { SolanaAuditFeed } from './components/SolanaAuditFeed';
-import { JudgeLogin } from './components/JudgeLogin';
-import { JudgeDashboard } from './components/JudgeDashboard';
+import { useState } from "react";
+import { motion } from "motion/react";
+import { Navigation } from "./components/Navigation";
+import { MetricsBar } from "./components/MetricsBar";
+import { FilterBar } from "./components/FilterBar";
+import { BailHeatmap } from "./components/BailHeatmap";
+import { BailDistribution } from "./components/BailDistribution";
+import { JudgesSection } from "./components/JudgesSection";
+import { GeminiChat } from "./components/GeminiChat";
+import { SolanaAuditFeed } from "./components/SolanaAuditFeed";
+import { JudgeLogin } from "./components/JudgeLogin";
+import { JudgeDashboard } from "./components/JudgeDashboard";
+import { useLanguage } from "./LanguageContext";
 
 const FADE_IN = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, ease: "easeOut" as const } };
 
@@ -22,6 +23,7 @@ function FadeIn({ delay = 0, className, children }: { delay?: number; className?
 }
 
 export default function App() {
+  const { t } = useLanguage();
   const [dateRange, setDateRange] = useState("all");
   const [region, setRegion] = useState<"massachusetts" | "boston">("massachusetts");
   const [showLogin, setShowLogin] = useState(false);
@@ -65,10 +67,10 @@ export default function App() {
             <FadeIn delay={0.1} className="mb-6">
               <div className="mb-4">
                 <h1 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">
-                  Public Bail Data Dashboard
+                  {t("app_title")}
                 </h1>
                 <p className="text-gray-600">
-                  Promoting fairness and transparency through open access to judicial data
+                  {t("app_subtitle")}
                 </p>
               </div>
             </FadeIn>
@@ -84,16 +86,16 @@ export default function App() {
             <FadeIn delay={0.25} className="mb-6">
               <div className="inline-flex overflow-hidden rounded-sm border border-gray-300 shadow-sm">
                 <button
-                  onClick={() => setRegion('massachusetts')}
-                  className={`px-6 py-2.5 text-sm font-medium transition-colors border-r border-gray-300 ${regionTab('massachusetts')}`}
+                  onClick={() => setRegion("massachusetts")}
+                  className={`px-6 py-2.5 text-sm font-medium transition-colors border-r border-gray-300 ${regionTab("massachusetts")}`}
                 >
-                  Massachusetts
+                  {t("app_massachusetts")}
                 </button>
                 <button
-                  onClick={() => setRegion('boston')}
-                  className={`px-6 py-2.5 text-sm font-medium transition-colors ${regionTab('boston')}`}
+                  onClick={() => setRegion("boston")}
+                  className={`px-6 py-2.5 text-sm font-medium transition-colors ${regionTab("boston")}`}
                 >
-                  Boston
+                  {t("app_boston")}
                 </button>
               </div>
             </FadeIn>

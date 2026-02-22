@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Volume2, Mic } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
 import { fetchChat, playTts } from "../api";
+import { useLanguage } from "../LanguageContext";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -18,6 +19,7 @@ const SpeechRecognitionAPI =
     : undefined;
 
 export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
+  const { language, t } = useLanguage();
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,7 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
     if (options?.text === undefined) setQuestion("");
     setMessages((prev) => [...prev, { role: "user", content: q }]);
     setLoading(true);
-    fetchChat(q)
+    fetchChat(q, language)
       .then((r) => {
         const reply = r.response ?? "";
         setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
@@ -59,7 +61,7 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
         }
       })
       .catch(() => {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, the request failed." }]);
+        setMessages((prev) => [...prev, { role: "assistant", content: t("chat_sorryFailed") }]);
       })
       .finally(() => setLoading(false));
   };
@@ -104,9 +106,9 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
         <SheetHeader className="shrink-0 border-b border-gray-200 pb-3">
-          <SheetTitle className="text-base font-semibold">AI Assistant</SheetTitle>
+          <SheetTitle className="text-base font-semibold">{t("chat_title")}</SheetTitle>
           <p className="text-xs font-normal text-gray-500">
-            Ask about bail data or judicial trends. Answers use judge data only.
+            {t("chat_subtitle")}
           </p>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-hidden py-4">
@@ -136,7 +138,7 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
                     }}
                     disabled={speakingIndex !== null}
                     className="shrink-0 rounded-full p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
-                    title="Read aloud"
+                    title={t("chat_readAloud")}
                   >
                     <Volume2 className="size-4" />
                   </button>
@@ -157,7 +159,7 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder="Ask a question…"
+              placeholder={t("chat_placeholder")}
               className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
             {SpeechRecognitionAPI && (
@@ -166,7 +168,7 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
                 onClick={listening ? stopListening : startListening}
                 disabled={loading}
                 className={`shrink-0 rounded-md p-2.5 ${listening ? "bg-red-500 text-white hover:bg-red-600" : "bg-gray-200 text-gray-700 hover:bg-gray-300"} disabled:opacity-50`}
-                title={listening ? "Stop listening" : "Talk to AI (response will be read aloud)"}
+                title={listening ? t("chat_stopListening") : t("chat_talkToAI")}
               >
                 <Mic className="size-5" />
               </button>
@@ -177,11 +179,11 @@ export function GeminiChat({ open, onOpenChange }: GeminiChatProps) {
               disabled={loading || !question.trim()}
               className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
             >
-              {loading ? "…" : "Send"}
+              {loading ? "…" : t("chat_send")}
             </button>
           </div>
           {listening && (
-            <p className="text-xs text-gray-500 shrink-0">Listening… speak now, then pause.</p>
+            <p className="text-xs text-gray-500 shrink-0">{t("chat_listening")}</p>
           )}
         </div>
       </SheetContent>

@@ -119,10 +119,11 @@ def get_outlier_brief(
     judge: str,
     crime: str,
     judge_median: float,
-    court_median: float
+    court_median: float,
+    language: str = Query("en", description="en, es, pt, zh"),
 ):
     return generate_outlier_brief(
-        judge, crime, judge_median, court_median
+        judge, crime, judge_median, court_median, language=language
     )
 
 

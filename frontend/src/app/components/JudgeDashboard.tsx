@@ -5,6 +5,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as
 import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
 import { fetchJudgeStats } from "../api";
+import { useLanguage } from "../LanguageContext";
 
 interface JudgeDashboardProps {
   judgeName: string;
@@ -17,7 +18,7 @@ type JudgeStats = {
   judge: string;
 };
 
-function TooltipButton({ content }: { content: string }) {
+function TooltipButton({ content, label }: { content: string; label: string }) {
   const [showTooltip, setShowTooltip] = useState(false);
   return (
     <div className="relative inline-block">
@@ -27,7 +28,7 @@ function TooltipButton({ content }: { content: string }) {
         className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
       >
         <Info className="size-3.5" />
-        Why this matters
+        {label}
       </button>
       {showTooltip && (
         <div className="absolute left-0 top-full mt-2 w-72 bg-gray-900 text-white text-xs p-3 rounded-sm shadow-lg z-10">
@@ -39,27 +40,24 @@ function TooltipButton({ content }: { content: string }) {
   );
 }
 
-const DATE_RANGE_OPTIONS: { value: string; label: string }[] = [
-  { value: "30d", label: "Last 30 Days" },
-  { value: "90d", label: "Last 90 Days" },
-  { value: "6m", label: "Last 6 Months" },
-  { value: "1y", label: "Last Year" },
-  { value: "2y", label: "Last 2 Years" },
-  { value: "all", label: "All" },
+const DATE_RANGE_OPTIONS: { value: string; key: "last30d" | "last90d" | "last6m" | "last1y" | "last2y" | "all" }[] = [
+  { value: "30d", key: "last30d" },
+  { value: "90d", key: "last90d" },
+  { value: "6m", key: "last6m" },
+  { value: "1y", key: "last1y" },
+  { value: "2y", key: "last2y" },
+  { value: "all", key: "all" },
 ];
-
 const PDF_MARGIN_MM = 14;
 
-function getDateRangeLabel(value: string): string {
-  return DATE_RANGE_OPTIONS.find((o) => o.value === value)?.label ?? value;
-}
-
 export function JudgeDashboard({ judgeName, onLogout }: JudgeDashboardProps) {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<JudgeStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("1y");
   const [pdfExporting, setPdfExporting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const dateRangeLabel = DATE_RANGE_OPTIONS.find((o) => o.value === dateRange) ? t(DATE_RANGE_OPTIONS.find((o) => o.value === dateRange)!.key) : dateRange;
 
   useEffect(() => {
     setLoading(true);
@@ -151,13 +149,13 @@ export function JudgeDashboard({ judgeName, onLogout }: JudgeDashboardProps) {
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 shrink-0 rounded-sm bg-black" />
               <div>
-                <div className="text-xl font-semibold text-gray-900 tracking-tight">BailLens Judge Dashboard</div>
+                <div className="text-xl font-semibold text-gray-900 tracking-tight">{t("dashboard_myDashboard")}</div>
                 <div className="text-xs text-gray-600 tracking-wide">{judgeName}</div>
               </div>
             </div>
             <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors">
               <LogOut className="size-4" />
-              Sign Out
+              {t("dashboard_logout")}
             </button>
           </div>
         </div>
@@ -176,7 +174,7 @@ export function JudgeDashboard({ judgeName, onLogout }: JudgeDashboardProps) {
             className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white font-medium rounded-sm transition-colors shadow-sm"
           >
             <Download className="size-4" />
-            {pdfExporting ? "Generating…" : "Download PDF Report"}
+            {pdfExporting ? t("dashboard_generating") : t("dashboard_downloadPdf")}
           </button>
         </motion.div>
 
@@ -189,7 +187,7 @@ export function JudgeDashboard({ judgeName, onLogout }: JudgeDashboardProps) {
               <div className="mb-10 pb-6 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-900 tracking-tight">{judgeName}</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  Data period: {getDateRangeLabel(dateRange)}
+                  Data period: {dateRangeLabel}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">
                   BailLens Judge Report — median bail by charge and over time
@@ -208,7 +206,7 @@ export function JudgeDashboard({ judgeName, onLogout }: JudgeDashboardProps) {
                     <h3 className="text-base font-semibold text-gray-900 tracking-tight">Median bail by charge</h3>
                     <p className="text-sm text-gray-600 mt-0.5">Your median vs court median by charge type</p>
                   </div>
-                  <TooltipButton content="Comparing your median bail to the court median by charge helps identify consistency. Variations may reflect case mix or local practice." />
+                  <TooltipButton label={t("dashboard_whyMatters")} content="Comparing your median bail to the court median by charge helps identify consistency. Variations may reflect case mix or local practice." />
                 </div>
                 <div>
                   {bailComparisonData.length === 0 ? (
@@ -277,12 +275,12 @@ export function JudgeDashboard({ judgeName, onLogout }: JudgeDashboardProps) {
                     >
                       {DATE_RANGE_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
-                          {opt.label}
+                          {t(opt.key)}
                         </option>
                       ))}
                     </select>
                   </div>
-                  <TooltipButton content="This trend shows how your median bail and the court median change month over month. Use it to see alignment and variation over time." />
+                  <TooltipButton label={t("dashboard_whyMatters")} content="This trend shows how your median bail and the court median change month over month. Use it to see alignment and variation over time." />
                 </div>
                 <div>
                   {trendData.length === 0 ? (

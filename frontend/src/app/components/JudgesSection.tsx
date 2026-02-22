@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Volume2 } from "lucide-react";
 import { fetchJudges, fetchJudgeStats, fetchOutlierBrief, playTts } from "../api";
+import { useLanguage } from "../LanguageContext";
 
 type JudgeStats = {
   bailComparison: { category: string; your: number; peers: number; courtAvg: number }[];
@@ -8,6 +9,7 @@ type JudgeStats = {
 };
 
 export function JudgesSection() {
+  const { language, t } = useLanguage();
   const [judges, setJudges] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,23 +46,23 @@ export function JudgesSection() {
     if (!selected) return;
     setExpandedCategory(category);
     setBrief(null);
-    fetchOutlierBrief(selected, category, your, courtAvg)
+    fetchOutlierBrief(selected, category, your, courtAvg, language)
       .then((r) => setBrief(r.ai_summary ?? ""))
-      .catch(() => setBrief("Could not load brief."));
+      .catch(() => setBrief(t("judges_couldNotLoad")));
   };
 
   if (loading) {
     return (
       <div className="bg-white border border-gray-300 rounded-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Judges</h3>
-        <p className="text-sm text-gray-500">Loading…</p>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("judges_title")}</h3>
+        <p className="text-sm text-gray-500">{t("judges_loading")}</p>
       </div>
     );
   }
   if (error) {
     return (
       <div className="bg-white border border-gray-300 rounded-sm shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Judges</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">{t("judges_title")}</h3>
         <p className="text-sm text-amber-600">{error}</p>
       </div>
     );
@@ -69,12 +71,12 @@ export function JudgesSection() {
   return (
     <div className="bg-white border border-gray-300 rounded-sm shadow-sm">
       <div className="border-b border-gray-300 px-6 py-4">
-        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">Judges</h3>
-        <p className="text-sm text-gray-600 mt-1">Select a judge to view bail comparison and AI brief</p>
+        <h3 className="text-lg font-semibold text-gray-900 tracking-tight">{t("judges_title")}</h3>
+        <p className="text-sm text-gray-600 mt-1">{t("judges_subtitle")}</p>
       </div>
       <div className="p-6 flex flex-col gap-6">
         <div className="min-w-[200px] max-w-xs">
-          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Judge</label>
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t("judges_judgeLabel")}</label>
           <select
             value={selected ?? ""}
             onChange={(e) => setSelected(e.target.value || null)}
@@ -88,14 +90,14 @@ export function JudgesSection() {
         </div>
         {stats && (
           <div className="w-full min-w-0">
-            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Bail by charge (median)</label>
+            <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">{t("judges_bailByCharge")}</label>
             <div className="mt-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 text-left text-gray-600">
-                    <th className="py-1 pr-4">Charge</th>
-                    <th className="py-1 pr-2">Judge</th>
-                    <th className="py-1 pr-2">Court avg</th>
+                    <th className="py-1 pr-4">{t("judges_charge")}</th>
+                    <th className="py-1 pr-2">{t("judges_judgeCol")}</th>
+                    <th className="py-1 pr-2">{t("judges_courtAvg")}</th>
                     <th className="py-1"></th>
                   </tr>
                 </thead>
@@ -111,7 +113,7 @@ export function JudgesSection() {
                           onClick={() => requestBrief(row.category, row.your, row.courtAvg)}
                           className="text-xs font-medium text-blue-600 hover:text-blue-700"
                         >
-                          AI brief
+                          {t("judges_aiBrief")}
                         </button>
                       </td>
                     </tr>
@@ -122,8 +124,8 @@ export function JudgesSection() {
             {expandedCategory && (
               <div className="mt-3 rounded-sm border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="min-w-0 flex-1">{brief === null ? "Loading…" : brief}</span>
-                  {brief !== null && brief !== "Could not load brief." && brief.length > 0 && (
+                  <span className="min-w-0 flex-1">{brief === null ? t("judges_loading") : brief}</span>
+                  {brief !== null && brief !== t("judges_couldNotLoad") && brief.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
@@ -133,7 +135,7 @@ export function JudgesSection() {
                       }}
                       disabled={briefSpeaking}
                       className="shrink-0 rounded-full p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-50"
-                      title="Read aloud"
+                      title={t("chat_readAloud")}
                     >
                       <Volume2 className="size-4" />
                     </button>
