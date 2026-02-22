@@ -5,10 +5,15 @@ from app.routes import chat
 
 app = FastAPI(title="JusticeHack Bail Analytics API")
 
-# 🔥 CORS (REQUIRED for frontend)
+# CORS: allow common dev origins (Vite often uses 5173; also 3000 and 127.0.0.1)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # frontend URL
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

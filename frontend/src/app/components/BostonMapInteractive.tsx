@@ -5,6 +5,8 @@ interface BostonMapInteractiveProps {
   getColorForBail: (bail: number) => string;
   onHoverChange: (neighborhood: string | null, region: any, event?: React.MouseEvent) => void;
   hoveredRegion: string | null;
+  /** Override medianBail per neighborhood id. Used for date-range heatmap. */
+  neighborhoodData?: Record<string, { displayName: string; medianBail: number }>;
 }
 
 // Boston neighborhoods data matching SVG IDs
@@ -130,10 +132,15 @@ const neighborhoodConfigs = [
 export function BostonMapInteractive({
   getColorForBail,
   onHoverChange,
-  hoveredRegion
+  hoveredRegion,
+  neighborhoodData,
 }: BostonMapInteractiveProps) {
+  const dataByNeighborhood = neighborhoodData
+    ? { ...bostonNeighborhoodsData, ...neighborhoodData }
+    : bostonNeighborhoodsData;
+
   const handleMouseEnter = (neighborhoodId: string, event: React.MouseEvent) => {
-    const data = bostonNeighborhoodsData[neighborhoodId];
+    const data = dataByNeighborhood[neighborhoodId];
     if (data) {
       onHoverChange(data.displayName, {
         name: data.displayName,
@@ -149,7 +156,7 @@ export function BostonMapInteractive({
   return (
     <div className="relative size-full">
       {neighborhoodConfigs.map((config) => {
-        const data = bostonNeighborhoodsData[config.id];
+        const data = dataByNeighborhood[config.id];
         if (!data) return null;
 
         const isHovered = hoveredRegion === data.displayName;

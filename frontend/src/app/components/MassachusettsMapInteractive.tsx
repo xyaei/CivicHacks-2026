@@ -5,33 +5,40 @@ interface MassachusettsMapInteractiveProps {
   getColorForBail: (bail: number) => string;
   onHoverChange: (county: string | null, region: any, event?: React.MouseEvent) => void;
   hoveredRegion: string | null;
+  /** Override medianBail per county (key = lowercase name). Used for date-range heatmap. */
+  countyData?: Record<string, { displayName: string; medianBail: number }>;
 }
 
-// Massachusetts counties data matching SVG IDs
+// Median bail by county from backend/query_result_cleaned.csv (court_division → county)
 const massachusettsCountiesData: Record<string, { displayName: string; medianBail: number }> = {
-  'berkshire': { displayName: 'Berkshire', medianBail: 5200 },
-  'franklin': { displayName: 'Franklin', medianBail: 5800 },
-  'hampshire': { displayName: 'Hampshire', medianBail: 7200 },
-  'hampden': { displayName: 'Hampden', medianBail: 6500 },
-  'worcester': { displayName: 'Worcester', medianBail: 8200 },
-  'middlesex': { displayName: 'Middlesex', medianBail: 10200 },
-  'essex': { displayName: 'Essex', medianBail: 9800 },
-  'suffolk': { displayName: 'Suffolk', medianBail: 12500 },
-  'norfolk': { displayName: 'Norfolk', medianBail: 11500 },
-  'bristol': { displayName: 'Bristol', medianBail: 7800 },
-  'plymouth': { displayName: 'Plymouth', medianBail: 8900 },
-  'barnstable': { displayName: 'Barnstable', medianBail: 9200 },
-  'dukes': { displayName: 'Dukes', medianBail: 8500 },
-  'nantucket': { displayName: 'Nantucket', medianBail: 9000 },
+  'berkshire': { displayName: 'Berkshire', medianBail: 75 },
+  'franklin': { displayName: 'Franklin', medianBail: 0 },
+  'hampshire': { displayName: 'Hampshire', medianBail: 5000 },
+  'hampden': { displayName: 'Hampden', medianBail: 1000 },
+  'worcester': { displayName: 'Worcester', medianBail: 5000 },
+  'middlesex': { displayName: 'Middlesex', medianBail: 10000 },
+  'essex': { displayName: 'Essex', medianBail: 0 },
+  'suffolk': { displayName: 'Suffolk', medianBail: 0 },
+  'norfolk': { displayName: 'Norfolk', medianBail: 0 },
+  'bristol': { displayName: 'Bristol', medianBail: 5000 },
+  'plymouth': { displayName: 'Plymouth', medianBail: 10000 },
+  'barnstable': { displayName: 'Barnstable', medianBail: 7500 },
+  'dukes': { displayName: 'Dukes', medianBail: 2500 },
+  'nantucket': { displayName: 'Nantucket', medianBail: 10000 },
 };
 
 export function MassachusettsMapInteractive({
   getColorForBail,
   onHoverChange,
-  hoveredRegion
+  hoveredRegion,
+  countyData,
 }: MassachusettsMapInteractiveProps) {
+  const dataByCounty = countyData
+    ? { ...massachusettsCountiesData, ...countyData }
+    : massachusettsCountiesData;
+
   const handleMouseEnter = (countyId: string, event: React.MouseEvent) => {
-    const data = massachusettsCountiesData[countyId];
+    const data = dataByCounty[countyId];
     if (data) {
       onHoverChange(data.displayName, {
         name: data.displayName,
@@ -45,7 +52,7 @@ export function MassachusettsMapInteractive({
   };
 
   const renderCounty = (countyId: string) => {
-    const data = massachusettsCountiesData[countyId];
+    const data = dataByCounty[countyId];
     if (!data) return null;
 
     const isHovered = hoveredRegion === data.displayName;
@@ -163,7 +170,7 @@ export function MassachusettsMapInteractive({
       viewBox="0 0 1149.64 712.767"
     >
       <g id="Frame 1">
-        {Object.keys(massachusettsCountiesData).map(countyId => renderCounty(countyId))}
+        {Object.keys(dataByCounty).map(countyId => renderCounty(countyId))}
       </g>
     </svg>
   );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Scale, Download, Info, TrendingDown, Users, BarChart3, LogOut, Search } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Scale, Download, Info, LogOut, Search } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
 interface JudgeDashboardProps {
   onLogout: () => void;
@@ -9,7 +9,6 @@ interface JudgeDashboardProps {
 
 type TimePeriod = 'day' | 'week' | '1month' | '3month' | 'ytd' | '1year' | 'all';
 
-// Mock data
 const bailComparisonData = [
   { category: 'Misdemeanor', your: 4200, peers: 3800, courtAvg: 4100 },
   { category: 'Felony', your: 15000, peers: 14200, courtAvg: 14800 },
@@ -17,27 +16,22 @@ const bailComparisonData = [
   { category: 'Property Crime', your: 6800, peers: 6500, courtAvg: 6700 },
 ];
 
-// Generate trend data based on time period
 const generateTrendData = (period: TimePeriod) => {
   switch (period) {
     case 'day':
-      // Last 30 days
       return Array.from({ length: 30 }, (_, i) => ({
         label: `Day ${i + 1}`,
         your: 9500 + Math.random() * 2000 - 1000,
         peers: 10300 + Math.random() * 2000 - 1000,
       }));
-    
     case 'week':
-      // Last 12 weeks
       return Array.from({ length: 12 }, (_, i) => ({
         label: `Week ${i + 1}`,
         your: 9500 + Math.random() * 3000 - 1500,
         peers: 10300 + Math.random() * 3000 - 1500,
       }));
-    
     case '1month':
-      // Last 12 months
+    case '1year':
       return [
         { label: 'Mar', your: 12500, peers: 11800 },
         { label: 'Apr', your: 13200, peers: 12100 },
@@ -52,42 +46,19 @@ const generateTrendData = (period: TimePeriod) => {
         { label: 'Jan', your: 9800, peers: 10500 },
         { label: 'Feb', your: 9500, peers: 10300 },
       ];
-    
     case '3month':
-      // Last 4 quarters
       return [
         { label: 'Q2 2025', your: 12500, peers: 11800 },
         { label: 'Q3 2025', your: 11600, peers: 11633 },
         { label: 'Q4 2025', your: 10500, peers: 11000 },
         { label: 'Q1 2026', your: 9767, peers: 10267 },
       ];
-    
     case 'ytd':
-      // Year to date (Jan, Feb)
       return [
         { label: 'Jan', your: 9800, peers: 10500 },
         { label: 'Feb', your: 9500, peers: 10300 },
       ];
-    
-    case '1year':
-      // Same as 1 month for this demo
-      return [
-        { label: 'Mar', your: 12500, peers: 11800 },
-        { label: 'Apr', your: 13200, peers: 12100 },
-        { label: 'May', your: 11800, peers: 11500 },
-        { label: 'Jun', your: 12900, peers: 12300 },
-        { label: 'Jul', your: 12100, peers: 11900 },
-        { label: 'Aug', your: 11500, peers: 11600 },
-        { label: 'Sep', your: 11200, peers: 11400 },
-        { label: 'Oct', your: 10800, peers: 11200 },
-        { label: 'Nov', your: 10500, peers: 11000 },
-        { label: 'Dec', your: 10200, peers: 10800 },
-        { label: 'Jan', your: 9800, peers: 10500 },
-        { label: 'Feb', your: 9500, peers: 10300 },
-      ];
-    
     case 'all':
-      // Last 3 years by quarter
       return [
         { label: 'Q1 2024', your: 14200, peers: 13800 },
         { label: 'Q2 2024', your: 13800, peers: 13500 },
@@ -99,7 +70,6 @@ const generateTrendData = (period: TimePeriod) => {
         { label: 'Q4 2025', your: 10500, peers: 11000 },
         { label: 'Q1 2026', your: 9767, peers: 10267 },
       ];
-    
     default:
       return [];
   }
@@ -111,16 +81,10 @@ const releaseRatesData = [
   { timeframe: 'Within 72h', your: 94, peers: 95, courtAvg: 94 },
 ];
 
-const disparityData = [
-  { demographic: 'Overall Index', your: 0.12, peers: 0.15, benchmark: 0.10 },
-  { demographic: 'By Income Level', your: 0.18, peers: 0.22, benchmark: 0.15 },
-  { demographic: 'By Geography', your: 0.09, peers: 0.12, benchmark: 0.08 },
-];
-
 const peerComparisons = [
-  { id: 'A', avgBail: 9200, releaseRate: 88, disparityIndex: 0.14, trend: 'improving' },
-  { id: 'B', avgBail: 11500, releaseRate: 84, disparityIndex: 0.16, trend: 'stable' },
-  { id: 'C', avgBail: 10800, releaseRate: 86, disparityIndex: 0.11, trend: 'improving' },
+  { id: 'A', avgBail: 9200, releaseRate: 88, trend: 'improving' },
+  { id: 'B', avgBail: 11500, releaseRate: 84, trend: 'stable' },
+  { id: 'C', avgBail: 10800, releaseRate: 86, trend: 'improving' },
 ];
 
 function TooltipButton({ content }: { content: string }) {
@@ -146,12 +110,7 @@ function TooltipButton({ content }: { content: string }) {
   );
 }
 
-interface TimePeriodSelectorProps {
-  selected: TimePeriod;
-  onChange: (period: TimePeriod) => void;
-}
-
-function TimePeriodSelector({ selected, onChange }: TimePeriodSelectorProps) {
+function TimePeriodSelector({ selected, onChange }: { selected: TimePeriod; onChange: (period: TimePeriod) => void }) {
   const periods: { value: TimePeriod; label: string }[] = [
     { value: 'day', label: 'Day' },
     { value: 'week', label: 'Week' },
@@ -161,7 +120,6 @@ function TimePeriodSelector({ selected, onChange }: TimePeriodSelectorProps) {
     { value: '1year', label: '1Y' },
     { value: 'all', label: 'All' },
   ];
-
   return (
     <div className="flex items-center gap-0 border border-gray-300 rounded-sm overflow-hidden shadow-sm">
       {periods.map((period) => (
@@ -169,9 +127,7 @@ function TimePeriodSelector({ selected, onChange }: TimePeriodSelectorProps) {
           key={period.value}
           onClick={() => onChange(period.value)}
           className={`px-3 py-1.5 text-xs font-medium transition-colors border-r border-gray-300 last:border-r-0 ${
-            selected === period.value
-              ? 'bg-gray-900 text-white'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
+            selected === period.value ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
         >
           {period.label}
@@ -484,55 +440,6 @@ export function JudgeDashboard({ onLogout }: JudgeDashboardProps) {
             </div>
           </div>
 
-          {/* Disparity Metrics */}
-          <div className="bg-white border border-gray-300 rounded-sm shadow-sm">
-            <div className="border-b border-gray-300 px-6 py-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 tracking-tight">
-                    Equity Metrics
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Statistical variance analysis
-                  </p>
-                </div>
-              </div>
-              <TooltipButton content="Lower index values indicate more consistent treatment across different groups. These metrics help ensure fairness and identify areas where additional training or review may be beneficial." />
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {disparityData.map((item) => (
-                  <div key={item.demographic}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">{item.demographic}</span>
-                      <span className="text-sm font-semibold text-gray-900">{item.your.toFixed(2)}</span>
-                    </div>
-                    <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
-                        style={{ width: `${(item.your / 0.3) * 100}%` }}
-                      ></div>
-                      <div 
-                        className="absolute top-0 h-full w-0.5 bg-gray-700"
-                        style={{ left: `${(item.benchmark / 0.3) * 100}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-500">Peer Median: {item.peers.toFixed(2)}</span>
-                      <span className="text-xs text-gray-500">Benchmark: {item.benchmark.toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  Lower values indicate more consistent outcomes. The benchmark represents statistical best practices.
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
         {/* Anonymous Peer Comparisons */}
         <motion.div 
           className="bg-white border border-gray-300 rounded-sm shadow-sm"
@@ -583,15 +490,12 @@ export function JudgeDashboard({ onLogout }: JudgeDashboardProps) {
                       <div className="text-xs text-gray-600 mb-1">Release Rate (48h)</div>
                       <div className="text-lg font-semibold text-gray-900">{peer.releaseRate}%</div>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-600 mb-1">Equity Index</div>
-                      <div className="text-lg font-semibold text-gray-900">{peer.disparityIndex.toFixed(2)}</div>
-                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+        </motion.div>
         </motion.div>
 
         {/* Footer Note */}

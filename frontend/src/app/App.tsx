@@ -6,50 +6,54 @@ import { MetricsBar } from './components/MetricsBar';
 import { FilterBar } from './components/FilterBar';
 import { BailHeatmap } from './components/BailHeatmap';
 import { BailDistribution } from './components/BailDistribution';
-import { TimeToRelease } from './components/TimeToRelease';
+import { JudgesSection } from './components/JudgesSection';
+import { GeminiChat } from './components/GeminiChat';
 import { SolanaAuditFeed } from './components/SolanaAuditFeed';
 import { JudgeLogin } from './components/JudgeLogin';
 import { JudgeDashboard } from './components/JudgeDashboard';
-import Chat from './components/chat/Chat';
-import { OutliersTable } from "./components/outliers/OutliersTable";
+
+const fadeIn = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, ease: "easeOut" as const } };
+
+function FadeIn({ delay = 0, className, children }: { delay?: number; className?: string; children: React.ReactNode }) {
+  return (
+    <motion.div className={className} {...fadeIn} transition={{ ...fadeIn.transition, delay }}>
+      {children}
+    </motion.div>
+  );
+}
 
 export default function App() {
-  const [chargeType, setChargeType] = useState('all');
-  const [dateRange, setDateRange] = useState('30d');
-  const [viewMode, setViewMode] = useState<'bail' | 'disparity'>('bail');
+  const [dateRange, setDateRange] = useState('all');
   const [region, setRegion] = useState<'massachusetts' | 'boston'>('massachusetts');
   const [showLogin, setShowLogin] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [chatOpen, setChatOpen] = useState(false);
 
   if (isLoggedIn) {
     return <JudgeDashboard onLogout={() => { setIsLoggedIn(false); setShowLogin(false); }} />;
   }
-
   if (showLogin) {
     return <JudgeLogin onBack={() => setShowLogin(false)} onLogin={() => setIsLoggedIn(true)} />;
   }
 
+  const regionTab = (r: 'massachusetts' | 'boston') =>
+    region === r ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 hover:bg-gray-50';
+
   return (
-    <motion.div 
+    <motion.div
       className="min-h-screen bg-gray-100"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
     >
-      <Navigation onJudgeLoginClick={() => setShowLogin(true)} />
-      
+      <Navigation onJudgeLoginClick={() => setShowLogin(true)} onChatClick={() => setChatOpen(true)} />
+      <GeminiChat open={chatOpen} onOpenChange={setChatOpen} />
+
       <div className="mx-auto max-w-[1440px] px-8 py-8">
         <div className="flex gap-6">
-          {/* Main Content */}
           <div className="flex-1">
-            {/* Header with Search */}
-            <motion.div 
-              className="mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
-            >
+            <FadeIn delay={0.1} className="mb-6">
               <div className="flex items-start justify-between gap-6 mb-4">
                 <div className="flex-1">
                   <h1 className="text-3xl font-semibold text-gray-900 tracking-tight mb-2">
@@ -59,8 +63,6 @@ export default function App() {
                     Promoting fairness and transparency through open access to judicial data
                   </p>
                 </div>
-                
-                {/* Search Bar */}
                 <div className="w-80">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
@@ -74,108 +76,49 @@ export default function App() {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </FadeIn>
 
-            {/* Metrics */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
-            >
+            <FadeIn delay={0.15}>
+              <FilterBar dateRange={dateRange} onDateRangeChange={setDateRange} />
+            </FadeIn>
+
+            <FadeIn delay={0.2}>
               <MetricsBar dateRange={dateRange} />
-            </motion.div>
+            </FadeIn>
 
-            {/* Filter Bar */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
-            >
-              <FilterBar
-                chargeType={chargeType}
-                dateRange={dateRange}
-                viewMode={viewMode}
-                onChargeTypeChange={setChargeType}
-                onDateRangeChange={setDateRange}
-                onViewModeChange={setViewMode}
-              />
-            </motion.div>
-
-            {/* Region Tabs */}
-            <motion.div 
-              className="mb-6"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.25, ease: "easeOut" }}
-            >
-              <div className="flex items-center gap-0 border border-gray-300 rounded-sm overflow-hidden shadow-sm inline-flex">
+            <FadeIn delay={0.25} className="mb-6">
+              <div className="inline-flex overflow-hidden rounded-sm border border-gray-300 shadow-sm">
                 <button
                   onClick={() => setRegion('massachusetts')}
-                  className={`px-6 py-2.5 text-sm font-medium transition-colors border-r border-gray-300 ${
-                    region === 'massachusetts'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`px-6 py-2.5 text-sm font-medium transition-colors border-r border-gray-300 ${regionTab('massachusetts')}`}
                 >
                   Massachusetts
                 </button>
                 <button
                   onClick={() => setRegion('boston')}
-                  className={`px-6 py-2.5 text-sm font-medium transition-colors ${
-                    region === 'boston'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`px-6 py-2.5 text-sm font-medium transition-colors ${regionTab('boston')}`}
                 >
                   Boston
                 </button>
               </div>
-            </motion.div>
+            </FadeIn>
 
-            {/* Heatmap */}
-            <motion.div 
-              className="mb-6"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.3, ease: "easeOut" }}
-            >
-              <BailHeatmap viewMode={viewMode} region={region} />
-            </motion.div>
+            <FadeIn delay={0.3} className="mb-6">
+              <BailHeatmap region={region} dateRange={dateRange} />
+            </FadeIn>
 
-            {/* Charts Grid */}
-            <motion.div 
-              className="grid grid-cols-2 gap-6 min-h-[400px]"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.35, ease: "easeOut" }}
-            >
-              <BailDistribution />
-              <TimeToRelease />
-            </motion.div>
+            <FadeIn delay={0.35} className="min-h-[400px]">
+              <BailDistribution dateRange={dateRange} />
+            </FadeIn>
 
-            {/* Outliers Table */}
-            <OutliersTable />
-
-            {/* Chat AI Demo */}
-            <motion.div
-              className="mt-6 w-full"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.4, ease: "easeOut" }}
-            >
-              <Chat />
-            </motion.div>
+            <FadeIn delay={0.4} className="mt-6">
+              <JudgesSection />
+            </FadeIn>
           </div>
 
-          {/* Sidebar */}
-          <motion.div 
-            className="w-80"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
-          >
+          <FadeIn delay={0.2} className="w-40 shrink-0">
             <SolanaAuditFeed />
-          </motion.div>
+          </FadeIn>
         </div>
       </div>
     </motion.div>

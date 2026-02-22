@@ -1,10 +1,11 @@
-import { Scale } from "lucide-react";
+import { Scale, MessageCircle } from "lucide-react";
 
 interface NavigationProps {
   onJudgeLoginClick: () => void;
+  onChatClick?: () => void;
 }
 
-export function Navigation({ onJudgeLoginClick }: NavigationProps) {
+export function Navigation({ onJudgeLoginClick, onChatClick }: NavigationProps) {
   return (
     <nav className="w-full border-b border-gray-300 bg-white shadow-sm">
       <div className="mx-auto max-w-[1440px] px-8 py-5">
@@ -22,13 +23,22 @@ export function Navigation({ onJudgeLoginClick }: NavigationProps) {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-6">
             <a
               href="#"
               className="text-sm font-medium text-gray-900 pb-1.5 border-b-2 border-gray-900"
             >
               Public Dashboard
             </a>
+            {onChatClick && (
+              <button
+                onClick={onChatClick}
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors pb-1.5"
+              >
+                <MessageCircle className="size-4" />
+                AI Assistant
+              </button>
+            )}
             <button
               onClick={onJudgeLoginClick}
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors pb-1.5"

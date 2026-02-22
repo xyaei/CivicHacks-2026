@@ -1,119 +1,46 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Info, Map, Grid3x3 } from 'lucide-react';
 import { BostonMapInteractive } from './BostonMapInteractive';
 import { MassachusettsMapInteractive } from './MassachusettsMapInteractive';
+import { fetchHeatmap } from '../api';
 
 interface HeatmapProps {
-  viewMode: 'bail' | 'disparity';
   region: 'massachusetts' | 'boston';
+  dateRange: string;
 }
 
-// Massachusetts counties defined as circles to overlay on the map image
-// ViewBox: 0 0 1400 800 (matches the background image proportions)
-const massachusettsCounties = [
-  { 
-    name: 'Berkshire', 
-    medianBail: 5200,
-    cx: 140,
-    cy: 280,
-    r: 90,
-  },
-  { 
-    name: 'Franklin', 
-    medianBail: 5800,
-    cx: 320,
-    cy: 160,
-    r: 70,
-  },
-  { 
-    name: 'Hampshire', 
-    medianBail: 7200,
-    cx: 330,
-    cy: 300,
-    r: 65,
-  },
-  { 
-    name: 'Hampden', 
-    medianBail: 6500,
-    cx: 330,
-    cy: 450,
-    r: 70,
-  },
-  { 
-    name: 'Worcester', 
-    medianBail: 8200,
-    cx: 550,
-    cy: 300,
-    r: 120,
-  },
-  { 
-    name: 'Middlesex', 
-    medianBail: 10200,
-    cx: 800,
-    cy: 180,
-    r: 90,
-  },
-  { 
-    name: 'Essex', 
-    medianBail: 9800,
-    cx: 950,
-    cy: 120,
-    r: 70,
-  },
-  { 
-    name: 'Suffolk', 
-    medianBail: 12500,
-    cx: 920,
-    cy: 280,
-    r: 35,
-  },
-  { 
-    name: 'Norfolk', 
-    medianBail: 11500,
-    cx: 880,
-    cy: 360,
-    r: 60,
-  },
-  { 
-    name: 'Bristol', 
-    medianBail: 7800,
-    cx: 860,
-    cy: 520,
-    r: 80,
-  },
-  { 
-    name: 'Plymouth', 
-    medianBail: 8900,
-    cx: 1020,
-    cy: 420,
-    r: 85,
-  },
-  { 
-    name: 'Barnstable', 
-    medianBail: 9200,
-    cx: 1220,
-    cy: 500,
-    r: 70,
-  },
-  { 
-    name: 'Dukes', 
-    medianBail: 8500,
-    cx: 1120,
-    cy: 650,
-    r: 40,
-  },
-  { 
-    name: 'Nantucket', 
-    medianBail: 9000,
-    cx: 1280,
-    cy: 650,
-    r: 40,
-  },
+// Base MA counties (layout); medianBail overridden from API by date range
+const massachusettsCountiesBase = [
+  { name: 'Berkshire', medianBail: 0, cx: 140, cy: 280, r: 90 },
+  { name: 'Franklin', medianBail: 0, cx: 320, cy: 160, r: 70 },
+  { name: 'Hampshire', medianBail: 0, cx: 330, cy: 300, r: 65 },
+  { name: 'Hampden', medianBail: 0, cx: 330, cy: 450, r: 70 },
+  { name: 'Worcester', medianBail: 0, cx: 550, cy: 300, r: 120 },
+  { name: 'Middlesex', medianBail: 0, cx: 800, cy: 180, r: 90 },
+  { name: 'Essex', medianBail: 0, cx: 950, cy: 120, r: 70 },
+  { name: 'Suffolk', medianBail: 0, cx: 920, cy: 280, r: 35 },
+  { name: 'Norfolk', medianBail: 0, cx: 880, cy: 360, r: 60 },
+  { name: 'Bristol', medianBail: 0, cx: 860, cy: 520, r: 80 },
+  { name: 'Plymouth', medianBail: 0, cx: 1020, cy: 420, r: 85 },
+  { name: 'Barnstable', medianBail: 0, cx: 1220, cy: 500, r: 70 },
+  { name: 'Dukes', medianBail: 0, cx: 1120, cy: 650, r: 40 },
+  { name: 'Nantucket', medianBail: 0, cx: 1280, cy: 650, r: 40 },
 ];
 
-// Boston neighborhoods with circular overlays matching the map image
-// ViewBox: 0 0 800 600 (approximate map proportions)
-const bostonNeighborhoods = [
+// Boston API name → map id (BostonMapInteractive)
+const BOSTON_NAME_TO_ID: Record<string, string> = {
+  'Allston-Brighton': 'allston_brighton',
+  'Central': 'central',
+  'Charlestown': 'charlestown',
+  'East Boston': 'east_boston',
+  'Roxbury': 'roxbury',
+  'North Dorchester': 'north_dorchester',
+  'South Boston': 'south_boston',
+  'West Roxbury': 'west_roxbury',
+};
+
+// Boston neighborhoods (grid/layout); medianBail overridden from API when available
+const bostonNeighborhoodsBase = [
   { 
     name: 'Charlestown', 
     medianBail: 11500,
@@ -282,10 +209,14 @@ const getBailLegendRanges = () => [
 
 function GeographicMapView({ 
   regions,
-  isMassachusetts
+  isMassachusetts,
+  countyData,
+  neighborhoodData,
 }: { 
   regions: any[];
   isMassachusetts: boolean;
+  countyData?: Record<string, { displayName: string; medianBail: number }>;
+  neighborhoodData?: Record<string, { displayName: string; medianBail: number }>;
 }) {
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
   const [tooltipData, setTooltipData] = useState<{ region: any; x: number; y: number } | null>(null);
@@ -324,12 +255,12 @@ function GeographicMapView({
                   }
                 }}
                 hoveredRegion={hoveredRegion}
+                countyData={countyData}
               />
             </div>
           </>
         ) : (
           <>
-            {/* Boston - Interactive SVG Map */}
             <div className="absolute inset-0 flex items-center justify-center p-6">
               <BostonMapInteractive 
                 getColorForBail={getColorForBail}
@@ -341,6 +272,7 @@ function GeographicMapView({
                   }
                 }}
                 hoveredRegion={hoveredRegion}
+                neighborhoodData={neighborhoodData}
               />
             </div>
           </>
@@ -400,13 +332,13 @@ function GeographicMapView({
 }
 
 function GridHeatmapView({
-  isMassachusetts
+  isMassachusetts,
+  locations,
 }: {
   isMassachusetts: boolean;
+  locations: { name: string; medianBail: number; cx?: number; cy?: number; r?: number }[];
 }) {
-  const locations = isMassachusetts ? massachusettsCounties : bostonNeighborhoods;
   
-  // Use useMemo to ensure grid data is generated only once and remains static
   const gridData = useMemo(() => generateStaticGridData(locations, chargeTypes), [locations]);
   
   const [hoveredCell, setHoveredCell] = useState<any | null>(null);
@@ -540,9 +472,62 @@ function GridHeatmapView({
   );
 }
 
-export function BailHeatmap({ viewMode, region }: HeatmapProps) {
+export function BailHeatmap({ region, dateRange }: HeatmapProps) {
   const [displayMode, setDisplayMode] = useState<'geographic' | 'chart'>('geographic');
+  const [heatmapData, setHeatmapData] = useState<{
+    massachusetts: { name: string; medianBail: number }[];
+    boston: { name: string; medianBail: number }[];
+  } | null>(null);
+
   const isMassachusetts = region === 'massachusetts';
+
+  useEffect(() => {
+    fetchHeatmap(dateRange)
+      .then(setHeatmapData)
+      .catch(() => setHeatmapData(null));
+  }, [dateRange]);
+
+  const massachusettsCounties = useMemo(() => {
+    const byName: Record<string, number> = {};
+    (heatmapData?.massachusetts ?? []).forEach((c) => {
+      byName[c.name] = c.medianBail;
+    });
+    return massachusettsCountiesBase.map((c) => ({
+      ...c,
+      medianBail: byName[c.name] ?? c.medianBail,
+    }));
+  }, [heatmapData]);
+
+  const bostonNeighborhoods = useMemo(() => {
+    const byName: Record<string, number> = {};
+    (heatmapData?.boston ?? []).forEach((n) => {
+      byName[n.name] = n.medianBail;
+    });
+    return bostonNeighborhoodsBase.map((n) => ({
+      ...n,
+      medianBail: byName[n.name] ?? n.medianBail,
+    }));
+  }, [heatmapData]);
+
+  const countyDataForMap = useMemo(() => {
+    const out: Record<string, { displayName: string; medianBail: number }> = {};
+    massachusettsCounties.forEach((c) => {
+      out[c.name.toLowerCase()] = { displayName: c.name, medianBail: c.medianBail };
+    });
+    return out;
+  }, [massachusettsCounties]);
+
+  const neighborhoodDataForMap = useMemo(() => {
+    const out: Record<string, { displayName: string; medianBail: number }> = {};
+    (heatmapData?.boston ?? []).forEach((n) => {
+      const id = BOSTON_NAME_TO_ID[n.name];
+      if (id) out[id] = { displayName: n.name, medianBail: n.medianBail };
+    });
+    return out;
+  }, [heatmapData]);
+
+  const mapRegions = isMassachusetts ? massachusettsCounties : bostonNeighborhoods;
+  const gridLocations = isMassachusetts ? massachusettsCounties : bostonNeighborhoods;
 
   return (
     <div className="bg-white rounded-sm border border-gray-300 shadow-sm">
@@ -602,11 +587,13 @@ export function BailHeatmap({ viewMode, region }: HeatmapProps) {
       <div className="p-6">
         {displayMode === 'geographic' ? (
           <GeographicMapView
-            regions={isMassachusetts ? massachusettsCounties : bostonNeighborhoods}
+            regions={mapRegions}
             isMassachusetts={isMassachusetts}
+            countyData={isMassachusetts ? countyDataForMap : undefined}
+            neighborhoodData={!isMassachusetts ? neighborhoodDataForMap : undefined}
           />
         ) : (
-          <GridHeatmapView isMassachusetts={isMassachusetts} />
+          <GridHeatmapView isMassachusetts={isMassachusetts} locations={gridLocations} />
         )}
       </div>
     </div>

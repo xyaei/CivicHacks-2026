@@ -1,32 +1,25 @@
-import { TrendingDown, Clock, Database, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { DollarSign, Scale, Database, Users } from "lucide-react";
+import { fetchSummary } from "../api";
 
-interface MetricCardProps {
+function MetricCard({
+  icon,
+  label,
+  value,
+  valueClassName = "text-2xl font-semibold text-gray-900 mb-1",
+}: {
   icon: React.ReactNode;
   label: string;
   value: string;
-  change?: string;
-  changeType?: 'positive' | 'neutral' | 'negative';
-}
-
-function MetricCard({ icon, label, value, change, changeType }: MetricCardProps) {
+  valueClassName?: string;
+}) {
   return (
     <div className="bg-white border border-gray-300 rounded-sm p-4 shadow-sm">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center justify-center w-9 h-9 bg-gray-100 rounded">
-          {icon}
-        </div>
-        {change && (
-          <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-            changeType === 'positive' ? 'bg-blue-50 text-blue-700' :
-            changeType === 'negative' ? 'bg-gray-100 text-gray-700' :
-            'bg-gray-50 text-gray-600'
-          }`}>
-            {change}
-          </span>
-        )}
+      <div className="mb-3 flex items-center justify-center w-9 h-9 rounded bg-gray-100">
+        {icon}
       </div>
-      <div className="text-2xl font-semibold text-gray-900 mb-1">{value}</div>
-      <div className="text-xs font-medium text-gray-600 uppercase tracking-wide">{label}</div>
+      <div className={valueClassName}>{value}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-gray-600">{label}</div>
     </div>
   );
 }
@@ -35,55 +28,57 @@ interface MetricsBarProps {
   dateRange: string;
 }
 
-// Mock function to calculate total cases based on date range
-const getTotalCases = (dateRange: string) => {
-  switch (dateRange) {
-    case '30d':
-      return { value: '1,417', change: '+8.3%' };
-    case '90d':
-      return { value: '4,289', change: '+12.1%' };
-    case '6m':
-      return { value: '8,542', change: '+6.7%' };
-    case '1y':
-      return { value: '16,924', change: '+9.4%' };
-    default:
-      return { value: '1,417', change: '+8.3%' };
-  }
-};
-
 export function MetricsBar({ dateRange }: MetricsBarProps) {
-  const totalCases = getTotalCases(dateRange);
+  const [summary, setSummary] = useState<{
+    total_cases?: number;
+    median_bond?: number;
+    mean_bond?: number;
+    most_common_crime?: string;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setError(null);
+    fetchSummary(dateRange)
+      .then(setSummary)
+      .catch((e: Error) => setError(e.message || "Failed to load metrics"));
+  }, [dateRange]);
+
+  if (error) {
+    return (
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="col-span-4 bg-amber-50 border border-amber-200 rounded-sm p-4 text-amber-800 text-sm">
+          {error}. (Start the backend with <code className="bg-amber-100 px-1">uvicorn app.main:app --reload</code> in the backend folder.)
+        </div>
+      </div>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="bg-white border border-gray-300 rounded-sm p-4 shadow-sm h-[100px] animate-pulse"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  const totalCases = summary.total_cases ?? 0;
+  const medianBond = summary.median_bond ?? 0;
+  const meanBond = summary.mean_bond ?? 0;
+  const mostCommonCrime = summary.most_common_crime?.trim() || "—";
+  const crimeDisplay = mostCommonCrime.length > 40 ? mostCommonCrime.slice(0, 37) + "…" : mostCommonCrime;
 
   return (
-    <div className="grid grid-cols-4 gap-4 mb-6">
-      <MetricCard
-        icon={<Database className="size-5 text-gray-700" />}
-        label="Total Cases"
-        value={totalCases.value}
-        change={totalCases.change}
-        changeType="neutral"
-      />
-      <MetricCard
-        icon={<Users className="size-5 text-gray-700" />}
-        label="Median Bail Amount"
-        value="$12,450"
-        change="-3.2%"
-        changeType="positive"
-      />
-      <MetricCard
-        icon={<Clock className="size-5 text-gray-700" />}
-        label="Avg Release Time"
-        value="16.2 hrs"
-        change="-11.5%"
-        changeType="positive"
-      />
-      <MetricCard
-        icon={<TrendingDown className="size-5 text-gray-700" />}
-        label="Disparity Index"
-        value="0.18"
-        change="Stable"
-        changeType="neutral"
-      />
+    <div className="mb-6 grid grid-cols-4 gap-4">
+      <MetricCard icon={<Database className="size-5 text-gray-700" />} label="Total Cases" value={totalCases.toLocaleString()} />
+      <MetricCard icon={<Users className="size-5 text-gray-700" />} label="Median Bail Amount" value={`$${medianBond.toLocaleString()}`} />
+      <MetricCard icon={<DollarSign className="size-5 text-gray-700" />} label="Mean Bail Amount" value={`$${meanBond.toLocaleString()}`} valueClassName="text-sm font-semibold text-gray-900 mb-1" />
+      <MetricCard icon={<Scale className="size-5 text-gray-700" />} label="Most Common Crime" value={crimeDisplay} valueClassName="text-sm font-semibold text-gray-900 mb-1 leading-tight" />
     </div>
   );
 }
