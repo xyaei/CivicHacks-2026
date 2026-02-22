@@ -19,3 +19,8 @@ venv/
 *.log
 
 .vscode/
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
