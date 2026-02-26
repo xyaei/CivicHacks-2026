@@ -1,11 +1,20 @@
 
-  # Public Data Dashboard Design
+# Public Data Dashboard
 
-  This is a code bundle for Public Data Dashboard Design. The original project is available at https://www.figma.com/design/C076sR8VhZkZJL4eVIXW8G/Public-Data-Dashboard-Design.
+A production-ready implementation of a public-facing data dashboard built with React, Vite, and Tailwind CSS.
 
-  ## Running the code
+The UI was initially designed in Figma and translated into a functional web application. This implementation extends the design with responsive layout behavior, component architecture, and interactive elements.
 
-  Run `npm i` to install the dependencies.
+## Tech Stack
 
-  Run `npm run dev` to start the development server.
-  
+- React
+- Vite
+- Tailwind CSS
+- TypeScript
+
+## Running the Code
+
+Install dependencies:
+
+```bash
+npm install
